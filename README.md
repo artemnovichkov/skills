@@ -1,5 +1,7 @@
 # Skills
 
+[![Install in Xcode](https://img.shields.io/badge/Install%20in-Xcode-147EFB?logo=xcode&logoColor=white)](xcode://agent-plugin-clone?repo=https%3A%2F%2Fgithub.com%2Fartemnovichkov%2Fskills)
+
 A collection of agent skills for iOS and Swift development workflows — crash triage, design comparison, build notifications, and log analysis.
 
 ## Available Skills
@@ -63,6 +65,16 @@ npx skills add artemnovichkov/skills --skill design-compare
 
 ```bash
 /plugin marketplace add artemnovichkov/skills
+```
+
+### Xcode 27
+
+[![Install in Xcode](https://img.shields.io/badge/Install%20in-Xcode-147EFB?logo=xcode&logoColor=white)](xcode://agent-plugin-clone?repo=https%3A%2F%2Fgithub.com%2Fartemnovichkov%2Fskills)
+
+Or paste the deeplink in Safari:
+
+```
+xcode://agent-plugin-clone?repo=https://github.com/artemnovichkov/skills
 ```
 
 ## Author
