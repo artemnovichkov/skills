@@ -39,7 +39,7 @@
     {
       "name": "design-compare",
       "description": "Compare Figma designs against implementation screenshots with interactive HTML reports",
-      "version": "1.0.0",
+      "version": "1.2.0",
       "author": {
         "name": "Artem Novichkov",
         "email": "mail@artemnovichkov.com",
