@@ -1,0 +1,45 @@
+# Regression suite for agent configuration: CLAUDE.md, skills, hooks.
+# Gates changes to the config on the eval pass rate.
+#
+# Requires an ANTHROPIC_API_KEY secret. Eval runs cost money - keep --runs low
+# in CI and set a ceiling with --max-cost-usd.
+
+name: SDLC evals
+
+on:
+  pull_request:
+    paths:
+      - 'CLAUDE.md'
+      - '.claude/**'
+      - 'evals/**'
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays, 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run eval suite
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude plugin eval . \
+            --runs 1 \
+            --threshold 0.8 \
+            --max-cost-usd 5 \
+            --no-publish \
+            --report eval-report.html
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: eval-report.html

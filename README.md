@@ -2,7 +2,7 @@
 
 [![Install in Xcode](https://img.shields.io/badge/Install%20in-Xcode-147EFB?logo=xcode&logoColor=white)](xcode://agent-plugin-clone?repo=https%3A%2F%2Fgithub.com%2Fartemnovichkov%2Fskills)
 
-A collection of agent skills for iOS and Swift development workflows — crash triage, design comparison, build notifications, and log analysis.
+A collection of agent skills for iOS and Swift development workflows — lifecycle planning, crash triage, design comparison, build notifications, and log analysis.
 
 ## Available Skills
 
@@ -46,6 +46,16 @@ macOS notifications for `xcodebuild` commands, mimicking Xcode's build notificat
 - Sends a notification after every `xcodebuild` build
 - Shows `Build Succeeded` or `Build Failed` as title
 - Body format: `<scheme> | <project> Project`
+
+### [sdlc](skills/sdlc)
+
+An artifact-driven software lifecycle — each stage commits a markdown file that triggers the next.
+
+- `intent.md` → `spec.md` → `plan.md` → verified diff → reviewed PR → production signal
+- Eight slash commands, one per stage, plus a repo scaffolder
+- `verifier` subagent that exercises a change and reports without fixing it
+- Opt-in hook that locks test files during a bug fix
+- Reuses plan mode, `/code-review`, and `claude plugin eval` instead of duplicating them
 
 ## Installation
 

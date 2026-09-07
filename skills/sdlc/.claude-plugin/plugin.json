@@ -1,0 +1,24 @@
+{
+  "name": "sdlc",
+  "description": "Run an artifact-driven software lifecycle: intent -> spec -> plan -> code -> verify -> review -> monitor, with every stage committed to git",
+  "version": "1.0.0",
+  "author": {
+    "name": "Artem Novichkov",
+    "email": "mail@artemnovichkov.com",
+    "url": "https://artemnovichkov.com"
+  },
+  "keywords": [
+    "sdlc",
+    "planning",
+    "spec",
+    "workflow",
+    "code-review",
+    "evals",
+    "governance"
+  ],
+  "license": "MIT",
+  "commands": [
+    "./commands/"
+  ],
+  "hooks": "./hooks/hooks.json"
+}

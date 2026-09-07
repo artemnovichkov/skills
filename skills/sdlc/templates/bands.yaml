@@ -1,0 +1,29 @@
+# Control bands: deterministic detection, tiered response.
+#
+# Detection is arithmetic and stays in the watcher script. The model is only
+# invoked once a band is breached, and what it may do is bounded per tier.
+
+metric: ci_test_failure_rate
+source: "gh run list --limit 100 --json conclusion"
+baseline: rolling_30d
+
+tiers:
+  1sigma:
+    action: log
+
+  2sigma:
+    action: diagnose
+    # Read-only. The model investigates and writes a finding; it changes nothing.
+    tools: "Read,Grep,Glob,Bash(gh run view:*),Bash(git log:*)"
+    output: sdlc/intent/            # diagnosis lands as a stage-1 intent
+
+  3sigma:
+    action: propose
+    # Bounded action only - a pull request, or a named pre-approved runbook.
+    routes:
+      - pull_request
+      - runbook:rollback-deploy
+    tools: "Read,Grep,Glob,Edit,Bash(git:*),Bash(gh pr create:*)"
+
+# No production credentials at any tier. Read-only tokens only.
+# Nothing merges or deploys without a human.
