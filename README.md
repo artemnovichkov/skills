@@ -2,7 +2,7 @@
 
 [![Install in Xcode](https://img.shields.io/badge/Install%20in-Xcode-147EFB?logo=xcode&logoColor=white)](xcode://agent-plugin-clone?repo=https%3A%2F%2Fgithub.com%2Fartemnovichkov%2Fskills)
 
-A collection of agent skills for iOS and Swift development workflows — lifecycle planning, crash triage, design comparison, build notifications, and log analysis.
+A collection of agent skills for iOS and Swift development workflows — lifecycle planning, crash triage, design comparison, build notifications, log analysis, and Xcode project editing.
 
 ## Available Skills
 
@@ -46,6 +46,14 @@ macOS notifications for `xcodebuild` commands, mimicking Xcode's build notificat
 - Sends a notification after every `xcodebuild` build
 - Shows `Build Succeeded` or `Build Failed` as title
 - Body format: `<scheme> | <project> Project`
+
+### [xcproj](skills/xcproj)
+
+Read, edit, and validate Xcode projects in the JSON project format (`project.xcproj`, Xcode 27.2+).
+
+- Reverse-engineered format reference for targets, files, build phases, packages
+- Verified recipes: new targets, framework embedding, test targets, Swift packages, run scripts
+- Catches keys Xcode silently drops via `xcprojformatter`
 
 ### [sdlc](skills/sdlc)
 
