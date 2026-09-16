@@ -1,0 +1,12 @@
+{
+  "name": "xcproj",
+  "description": "Read, edit, and validate Xcode projects in the JSON project format (project.xcproj, Xcode 27.2+)",
+  "version": "1.0.0",
+  "author": {
+    "name": "Artem Novichkov",
+    "email": "mail@artemnovichkov.com",
+    "url": "https://artemnovichkov.com"
+  },
+  "keywords": ["xcode", "xcproj", "xcodeproj", "project", "ios", "macos", "apple"],
+  "license": "MIT"
+}
