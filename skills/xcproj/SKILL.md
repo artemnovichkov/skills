@@ -47,7 +47,7 @@ uuidgen | tr -d - | cut -c1-24
    - `FAIL xcprojformatter` with a JSON path → malformed JSON or invalid value; fix at that path.
    - `WARN keys dropped` → typo, key in the wrong place, or a default value. Fix everything except defaults you added on purpose.
    - `FAIL xcodebuild -list` → Xcode can't load the project (unknown target name, bad reference, duplicate name).
-4. Build the affected scheme when the change matters for compilation (new target, package, sources).
+4. Build the affected scheme when the change matters for compilation (new target, package, sources). For new frameworks or embedded content, also launch the app — linking problems like a wrong install name only show up at launch.
 5. Optionally canonicalize so the diff matches what Xcode would write: `xcrun xcprojformatter --update App.xcodeproj`. Mention it to the user rather than doing it silently if the file had comments — they'll be removed.
 
 ## Recipes
@@ -107,7 +107,9 @@ Individual file in a regular group, added to a target's phases:
   "build-phases": [ "headers", "compile-sources", "frameworks", "resources" ],
   "build-settings": {
     "DEFINES_MODULE": "YES",
+    "DYLIB_INSTALL_NAME_BASE": "@rpath",
     "GENERATE_INFOPLIST_FILE": "YES",
+    "LD_RUNPATH_SEARCH_PATHS": "$(inherited) @executable_path/Frameworks @loader_path/Frameworks",
     "PRODUCT_BUNDLE_IDENTIFIER": "com.example.Kit",
     "PRODUCT_NAME": "$(TARGET_NAME)",
     "SKIP_INSTALL": "YES",
@@ -123,13 +125,13 @@ A target also needs:
   ```
 - a sources folder: `{ "kind": "folder", "path": "Kit", "target-membership": [ "Kit" ] }`.
 
-`product-type` drops the `com.apple.product-type.` prefix: `application`, `framework`, `library.static`, `library.dynamic`, `tool`, `bundle.unit-test`, `bundle.ui-testing`, `app-extension`. Product `type` is the matching file type: `wrapper.application`, `wrapper.framework`, `archive.ar`, `wrapper.cfbundle`, `wrapper.app-extension`.
+`product-type` drops the `com.apple.product-type.` prefix (any string passes validation, so a wrong value like `unit-test` only fails at build or test time): `application`, `framework`, `library.static`, `library.dynamic`, `tool`, `bundle.unit-test`, `bundle.ui-testing`, `app-extension`. Product `type` is the matching file type: `wrapper.application`, `wrapper.framework`, `archive.ar`, `wrapper.cfbundle`, `wrapper.app-extension`.
 
-Copy platform settings (`SDKROOT`, deployment target, `TARGETED_DEVICE_FAMILY`) from an existing target when they aren't set at the project level.
+Copy platform settings (`SDKROOT`, deployment target, `TARGETED_DEVICE_FAMILY`) from an existing target when they aren't set at the project level. Don't copy an existing framework target blindly: hand-made projects often lack `DYLIB_INSTALL_NAME_BASE`, and without it the framework's install name is `/Library/Frameworks/…` — the app builds fine but fails to launch.
 
 ### Link and embed a framework target
 
-On the app target add a dependency and an embed phase; on the product reference declare membership in both phases:
+On the app target add a dependency, an embed phase, and `"LD_RUNPATH_SEARCH_PATHS": "$(inherited) @executable_path/Frameworks"` so the embedded framework is found at launch; on the product reference declare membership in both phases:
 
 ```jsonc
 // app target
@@ -168,7 +170,7 @@ On the app target add a dependency and an embed phase; on the product reference 
   },
 }
 ```
-Plus the `<PRODUCTS>/AppTests.xctest` product reference (`"type": "wrapper.cfbundle"`) and a sources folder. The auto-generated scheme for the app won't include the new tests; test with `xcodebuild test -scheme AppTests` or tell the user to add the target to the app scheme's test action.
+Plus the `<PRODUCTS>/AppTests.xctest` product reference (`"type": "wrapper.cfbundle"`) and a sources folder. With auto-generated schemes, `xcodebuild test -scheme App` picks up the hosted test target; if the project has shared schemes (`xcshareddata/xcschemes`), add the target to the scheme's test action.
 
 ### Add a Swift package
 
@@ -202,7 +204,7 @@ Declare the package at the root, then link a product from the target:
   "run-on-every-build": true }
 ```
 
-Order in `build-phases` is execution order. `name` is required and should be unique within the target. Add `"scope": "install"` for "run only when installing".
+Order in `build-phases` is execution order. `name` is required and should be unique within the target. Declare `output-paths` if the script produces files; otherwise set `"run-on-every-build": true`, or Xcode warns on every build that the script has no outputs. Add `"scope": "install"` for "run only when installing".
 
 ### Use an xcconfig file
 
