@@ -16,7 +16,12 @@ ls App.xcodeproj
 ```
 
 - `project.xcproj` → JSON format, use this skill.
-- `project.pbxproj` → legacy plist format. There's no CLI converter; if the user wants JSON, tell them: select the project in the Project navigator → File inspector → Project Document → Project Format → JSON.
+- `project.pbxproj` → legacy plist format. Convert only if the user asks (default for new projects in Xcode 27.2, but existing ones stay plist):
+  ```sh
+  xcodebuild -project App.xcodeproj -convert-project "Xcode Project"
+  ```
+  Or in Xcode: Project navigator → File inspector → Project Document → Project Format → JSON. Before converting, warn that tools parsing `project.pbxproj` directly (CocoaPods, fastlane actions, Capacitor, XcodeGen/Tuist post-processing, custom scripts) may break, often silently with exit code 0. Schemes, `Package.resolved` and `xcuserdata` are unaffected.
+- There's no CLI conversion back: `-convert-project "Xcode 27.0"` (or any plist version) on a JSON project is a silent no-op with exit code 0. Use git to revert.
 - Never create `project.pbxproj` next to `project.xcproj` — Xcode refuses to open a project with both.
 
 ## How the format thinks

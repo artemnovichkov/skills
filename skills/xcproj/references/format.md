@@ -17,7 +17,7 @@ xcrun xcprojformatter --update X.xcodeproj    # canonicalize in place
 xcrun xcprojformatter --input X.xcodeproj     # print canonical → diff to validate
 ```
 Errors carry a JSON path: `Missing required value for key "id" at "/targets[1]"`, `Unexpected value "zzz"`, `Invalid path base: "ZZZ"`.
-**Xcode**: plist → JSON conversion only in the UI (File inspector → Project Format).
+**Xcode**: plist → JSON: `xcodebuild -project X.xcodeproj -convert-project "Xcode Project"` (also accepts `xcproj`; not `json`) or UI (File inspector → Project Format). JSON → plist via CLI is a silent no-op (exit 0). Xcode 27.0 already reads `project.xcproj`; `xcprojformatter` ships only from 27.2.
 
 ## Shared value types
 
@@ -33,7 +33,7 @@ Errors carry a JSON path: `Missing required value for key "id" at "/targets[1]"`
 | `<PROJECT>/…` `<PRODUCTS>/…` `<SDK>/…` `<DEVELOPER>/…` | built-in |
 | `<USER:SETTING>/…` | source tree named by a build setting (escape `>` and `\` inside as `\>`, `\\`) |
 - relative/absolute paths escape `<` and `\` as `\<`, `\\`
-- paths can't start with `~`; after a base, the path can't start with `/` or `~`
+- paths can't start with `~`; after a base, the path can't start with `/` or `~` (**Xcode** 27.2: `"~/a.swift"` → `Base disagrees with absoluteness of path`, project fails to load; library PR apple/xcode-project-format#1 may change this)
 
 **Marketing version** — `"27.0"` or `"26.3.1"` (2–3 integers).
 
