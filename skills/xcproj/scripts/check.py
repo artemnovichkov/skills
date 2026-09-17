@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 
-def strip_jsonc(text):
+def parse_jsonc(text):
     out, i, n, in_str = [], 0, len(text), False
     while i < n:
         ch = text[i]
@@ -42,6 +42,15 @@ def strip_jsonc(text):
         out.append(ch)
         i += 1
     return json.loads(re.sub(r",(\s*[\]}])", r"\1", "".join(out)))
+
+
+def load(text, label):
+    try:
+        return parse_jsonc(text)
+    except (json.JSONDecodeError, ValueError, IndexError) as error:
+        print(f"SKIP key check: {label} uses JSON5 syntax this script can't parse ({error})")
+        print("     Xcode accepts it; run `xcrun xcprojformatter --update` to rewrite as plain JSON, then re-run.")
+        return None
 
 
 def key_paths(node, path=""):
@@ -81,8 +90,10 @@ def main():
         print((result.stderr or result.stdout).strip())
         sys.exit(1)
 
-    before = strip_jsonc(source.read_text())
-    after = strip_jsonc(result.stdout)
+    before = load(source.read_text(), "project.xcproj")
+    after = load(result.stdout, "formatter output")
+    if before is None or after is None:
+        sys.exit(1)
     after_paths = {p for p, _ in key_paths(after)}
     dropped = [(p, v) for p, v in key_paths(before) if p not in after_paths]
     # Report only the outermost dropped key of each subtree.

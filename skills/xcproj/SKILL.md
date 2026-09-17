@@ -1,13 +1,13 @@
 ---
 name: xcproj
-description: Read and edit Xcode projects in the JSON project format (`project.xcproj`, Xcode 27.2+) — add targets, Swift packages, files and folders, build phases, build settings, dependencies — and validate the result. The format is new and undocumented, so use this skill whenever an `.xcodeproj` contains `project.xcproj` instead of `project.pbxproj`, or the user mentions .xcproj, the JSON project format, or asks to change Xcode project configuration (targets, schemes aside) without opening Xcode, even if they don't name the format.
+description: Read and edit Xcode projects in the JSON project format (`project.xcproj`, Xcode 27.2+) — add targets, Swift packages, files and folders, build phases, build settings, dependencies — and validate the result. Use this skill whenever an `.xcodeproj` contains `project.xcproj` instead of `project.pbxproj`, or the user mentions .xcproj, the JSON project format, or asks to change Xcode project configuration (targets, schemes aside) without opening Xcode, even if they don't name the format.
 ---
 
 # xcproj
 
 Edit Xcode's JSON project format (`App.xcodeproj/project.xcproj`) safely.
 
-The format shipped in Xcode 27.2 with no public spec. Everything here is reverse-engineered from Xcode 27.2 (27B5019j). If Xcode's own tools disagree with this skill, trust the tools.
+The format shipped in Xcode 27.2. Apple's reference implementation, [apple/xcode-project-format](https://github.com/apple/xcode-project-format) (`XCSchema` types), is the source of truth for keys and values; Xcode-specific behavior (conversion, loading, building) was verified on Xcode 27.2 (27B5019j). If Xcode's own tools disagree with this skill, trust the tools.
 
 ## Detect the format
 
@@ -23,13 +23,14 @@ ls App.xcodeproj
 
 The plist format was a flat graph of objects with IDs. The JSON format is a tree addressed by names, which is what makes it editable by hand. Keep these rules in mind:
 
-- **Unknown keys are silently dropped.** A typo like `"buld-settings"` produces no error — the setting just disappears on the next save. This is the main risk when editing, so always run the check script afterwards.
-- **Names are references.** Targets are referenced by `name`, build phases as `"Target/phase"`, products as a name path like `"Products/App.app"`. Renaming a target means updating every string that mentions it.
+- **Unknown keys are silently ignored.** A typo like `"buld-settings"` produces no error — the setting just disappears on the next save. This is the main risk when editing, so always run the check script afterwards.
+- **Names are references.** Targets are referenced by `name` (unique), build phases as `"Target/<kind>[/<name>]"`, products as a name path like `"Products/App.app"`. When names are ambiguous, use `"id:<ID>"`. Renaming a target means updating every string that mentions it.
 - **No build-file objects.** A file declares which build phases it belongs to via `target-membership`, instead of phases listing files.
-- **IDs only where required.** Targets need an `"id"` (24 uppercase hex chars, unique in the file). Product file references carry one too. Don't add IDs anywhere else.
+- **IDs only where needed.** Targets require an `"id"`; Xcode also gives product file references one. Any unique string works, but match Xcode's convention of 24 uppercase hex chars. Don't add IDs anywhere else.
 - **Defaults are omitted.** Xcode doesn't write `false`, empty arrays, `"kind": "native"`, `"scope": "always"`, etc.
-- **Syntax is JSONC.** Trailing commas and `//` comments are accepted. Xcode rewrites the file on save, dropping comments, so don't rely on them.
+- **Syntax is JSON5.** Trailing commas and comments are accepted. Xcode rewrites the file on save, dropping comments, so don't rely on them. Write plain JSON with trailing commas, like Xcode does.
 - **Kebab-case keys.** The exception is dependency kinds: `localTarget`, `remoteTarget`.
+- **Never add `required-capabilities`.** An unknown capability makes the project fail to load.
 
 Generate an ID:
 ```sh
@@ -45,7 +46,7 @@ uuidgen | tr -d - | cut -c1-24
    python3 <skill-dir>/scripts/check.py App.xcodeproj --list
    ```
    - `FAIL xcprojformatter` with a JSON path → malformed JSON or invalid value; fix at that path.
-   - `WARN keys dropped` → typo, key in the wrong place, or a default value. Fix everything except defaults you added on purpose.
+   - `WARN keys dropped` → typo, key in the wrong place, a default value, or `null`. Fix everything except defaults you added on purpose.
    - `FAIL xcodebuild -list` → Xcode can't load the project (unknown target name, bad reference, duplicate name).
 4. Build the affected scheme when the change matters for compilation (new target, package, sources). For new frameworks or embedded content, also launch the app — linking problems like a wrong install name only show up at launch.
 5. Optionally canonicalize so the diff matches what Xcode would write: `xcrun xcprojformatter --update App.xcodeproj`. Mention it to the user rather than doing it silently if the file had comments — they'll be removed.
@@ -65,7 +66,7 @@ Project-level settings live in the root `build-settings`, target-level ones in t
 }
 ```
 
-Values are strings; list-type settings are space-separated strings. Keep keys sorted — that's how Xcode writes them.
+Values are strings or arrays of strings (`"OTHER_LDFLAGS": [ "-ObjC", "-lz" ]`). Keep keys sorted — that's how Xcode writes them.
 
 ### Add a Swift file or folder of sources
 
@@ -191,7 +192,7 @@ Declare the package at the root, then link a product from the target:
 ```
 
 - `package` is the repository's last path component without `.git`; omit it for local packages.
-- `version`: exactly one of `up-to-next-major-version`, `up-to-next-minor-version`, `version` (exact), `branch`, `revision`, or `"version-range": "1.0.0..<2.0.0"`.
+- `version`: one of `up-to-next-major-version`, `up-to-next-minor-version`, `version` (exact), `branch`, `revision`, or `"version-range": "1.0.0..<2.0.0"`. Use exactly one — with several, only the first in the library's order counts.
 - Verify resolution with `xcodebuild -resolvePackageDependencies -project App.xcodeproj`.
 
 ### Add a run script phase
@@ -204,7 +205,7 @@ Declare the package at the root, then link a product from the target:
   "run-on-every-build": true }
 ```
 
-Order in `build-phases` is execution order. `name` is required and should be unique within the target. Declare `output-paths` if the script produces files; otherwise set `"run-on-every-build": true`, or Xcode warns on every build that the script has no outputs. Add `"scope": "install"` for "run only when installing".
+Order in `build-phases` is execution order. `shell` and `script` are required; `script` can also be an array of lines. Give the phase a `name` unique within the target — it's how `target-membership` and exceptions refer to it. Declare `output-paths` if the script produces files; otherwise set `"run-on-every-build": true`, or Xcode warns on every build that the script has no outputs. Add `"scope": "install"` for "run only when installing".
 
 ### Use an xcconfig file
 
@@ -213,8 +214,12 @@ Reference the file in `files`, then attach it by name:
 "files": [ { "path": "Config/Shared.xcconfig" } ],
 "configurations": [ { "name": "Debug", "file": "Shared.xcconfig" }, { "name": "Release", "file": "Shared.xcconfig" } ],
 ```
-For a target, use `"specialized-configurations"` with the same shape. Configuration names must match the project's `configurations`.
+`file` is a name path in the group tree. For an xcconfig inside a synchronized folder, anchor at the folder:
+```jsonc
+{ "name": "Debug", "file": { "anchor": "Config", "relative-path": "Debug.xcconfig" } }
+```
+For a target, use `"specialized-configurations"` with the same shape (only entries with a `file`). Configuration names must match the project's `configurations`.
 
 ## Reference
 
-[references/format.md](references/format.md) — every known key, value, and path base (`<PRODUCTS>`, `<SDK>`, `<DEVELOPER>`, `<PROJECT>`), including dependencies on other projects, build rules, variant/version groups, file encodings, and build-file attributes. Read it before using a key that isn't in the recipes above.
+[references/format.md](references/format.md) — every key and value from Apple's implementation: path bases (`<PRODUCTS>`, `<SDK>`, `<DEVELOPER>`, `<PROJECT>`, `<USER:SETTING>`) and escaping, name paths with `/` in names, dependencies on other projects, build rules, variant/version groups, file encodings, and build-file attributes. Read it before using a key that isn't in the recipes above.

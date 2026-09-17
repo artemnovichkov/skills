@@ -51,7 +51,7 @@ macOS notifications for `xcodebuild` commands, mimicking Xcode's build notificat
 
 Read, edit, and validate Xcode projects in the JSON project format (`project.xcproj`, Xcode 27.2+).
 
-- Reverse-engineered format reference for targets, files, build phases, packages
+- Format reference based on Apple's `xcode-project-format` implementation
 - Verified recipes: new targets, framework embedding, test targets, Swift packages, run scripts
 - Catches keys Xcode silently drops via `xcprojformatter`
 
