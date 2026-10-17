@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
-"""Validate an Xcode JSON project (project.xcproj).
+"""Validate an Xcode project file, in either format.
 
 Usage: check.py path/to/App.xcodeproj [--list]
 
+For a JSON project (project.xcproj):
 1. Runs `xcrun xcprojformatter` — fails on malformed JSON or invalid values.
 2. Compares keys before/after formatting. Xcode silently drops unknown keys,
    so any key that disappears is a typo, a misplaced key, or a default value.
+   This is the check that matters after a hand edit or a merge; edits made
+   through `xcrun xcodeproj` are already canonical.
 3. With --list, runs `xcodebuild -list` to make sure Xcode can load the project
    (catches unresolved target/phase names).
+
+For a legacy project (project.pbxproj) only step 3 applies: xcprojformatter
+does not read that format. Pass --list to get any check at all there.
 """
 import json
 import re
@@ -70,16 +76,36 @@ def key_paths(node, path=""):
             yield from key_paths(item, f"{path}[{label}]")
 
 
+def run_list(project):
+    """Return 0 if `xcodebuild -list` can load the project, 1 otherwise."""
+    listing = subprocess.run(
+        ["xcodebuild", "-list", "-project", str(project)],
+        capture_output=True, text=True,
+    )
+    text = listing.stdout + listing.stderr
+    if "Unable to read project" in text:
+        print("FAIL xcodebuild -list")
+        print("\n".join(l for l in text.splitlines() if l.strip() and "xcresult" not in l)[:2000])
+        return 1
+    print("OK   xcodebuild -list")
+    return 0
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if len(args) != 1:
         sys.exit(__doc__)
     project = Path(args[0])
-    if project.name == "project.xcproj":
+    if project.name in ("project.xcproj", "project.pbxproj"):
         project = project.parent
     source = project / "project.xcproj"
     if not source.exists():
-        sys.exit(f"error: {source} not found (plist projects use project.pbxproj; convert in Xcode's File inspector)")
+        legacy = project / "project.pbxproj"
+        if not legacy.exists():
+            sys.exit(f"error: no project.xcproj or project.pbxproj in {project}")
+        print(f"SKIP xcprojformatter: {legacy.name} is the plist format, which it can't read")
+        print("     Structural edits there are still verified by `xcodebuild -list` below.")
+        sys.exit(run_list(project) if "--list" in sys.argv else 0)
 
     result = subprocess.run(
         ["xcrun", "xcprojformatter", "--input", str(project)],
@@ -112,17 +138,7 @@ def main():
         print("OK   xcprojformatter: no keys dropped")
 
     if "--list" in sys.argv:
-        listing = subprocess.run(
-            ["xcodebuild", "-list", "-project", str(project)],
-            capture_output=True, text=True,
-        )
-        text = listing.stdout + listing.stderr
-        if "Unable to read project" in text:
-            print("FAIL xcodebuild -list")
-            print("\n".join(l for l in text.splitlines() if l.strip() and "xcresult" not in l)[:2000])
-            status = 1
-        else:
-            print("OK   xcodebuild -list")
+        status |= run_list(project)
 
     sys.exit(status)
 

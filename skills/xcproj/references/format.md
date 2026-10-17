@@ -2,6 +2,12 @@
 
 Source of truth: Apple's reference implementation [apple/xcode-project-format](https://github.com/apple/xcode-project-format) — Swift types under `XCSchema` (`Sources/Library/Schema`), [docs](https://swiftpackageindex.com/apple/xcode-project-format/documentation/XcodeProjectFormat). Type names below point there. Notes marked **Xcode** are observed Xcode 27.2 behavior, not part of the library.
 
+> Read this when you need a key the `xcodeproj` CLI has no command for (per-file
+> compiler flags, build rules, variant groups, `localizations`), or when resolving a
+> merge conflict. For anything the CLI covers, use it instead — see SKILL.md. Hand
+> edits are where silent key loss happens, so validate afterwards with
+> `scripts/check.py`.
+
 ## Syntax
 - `App.xcodeproj/project.xcproj` replaces `project.pbxproj` (**Xcode**: having both = error)
 - JSON5: comments, trailing commas, single quotes, unquoted keys. The formatter strips comments
@@ -17,7 +23,7 @@ xcrun xcprojformatter --update X.xcodeproj    # canonicalize in place
 xcrun xcprojformatter --input X.xcodeproj     # print canonical → diff to validate
 ```
 Errors carry a JSON path: `Missing required value for key "id" at "/targets[1]"`, `Unexpected value "zzz"`, `Invalid path base: "ZZZ"`.
-**Xcode**: plist → JSON: `xcodebuild -project X.xcodeproj -convert-project "Xcode Project"` (also accepts `xcproj`; not `json`) or UI (File inspector → Project Format). JSON → plist via CLI is a silent no-op (exit 0). Xcode 27.0 already reads `project.xcproj`; `xcprojformatter` ships only from 27.2.
+**Xcode**: conversion goes both ways and replaces the file in place, so commit first — `xcodebuild -project X.xcodeproj -convert-project xcproj` (plist → JSON) and `-convert-project pbxproj` (JSON → plist). `"Xcode Project"` is a synonym for the JSON side and a plist version name (`"Xcode 27.0"`) for the other; `json` is not accepted. The UI switch is File inspector → Project Document → Project Format. Xcode 27.0/27.1 read `project.xcproj`; both command-line tools ship only with 27.2.
 
 ## Shared value types
 
@@ -220,3 +226,34 @@ Objects take `kind`, optional `name` and `id`:
 ## Xcode conversion notes (observed)
 - not preserved: `lastKnownFileType` (inferred), `usesTabs`/`indentWidth`/`tabWidth`, `CreatedOnToolsVersion`, `hasScannedForEncodings`, `knownRegions` order
 - script phase without a name converts to `"Run Script"`
+
+## Merge conflicts
+
+Sorted keys and sorted array entries put both branches' additions in the same
+place, so packages and build settings conflict even when the change is logically
+independent. The conflicts are readable, but resolving them by keeping both sides
+is a trap:
+
+- **Array entries** (`packages`, `files`, `targets`, `package-product-members`)
+  must become separate objects again. Keeping both sides inside one object
+  produces duplicate keys (two `repository`, two `name`); the formatter accepts
+  that file and silently keeps one, so the project loses a package or a target
+  with no error anywhere.
+- **Dictionary entries** (`build-settings`) are safe to keep side by side as long
+  as the keys differ.
+- Conflicts inside a single string value (one `"path"`, one setting value) have
+  one correct answer — pick it, don't concatenate.
+
+After resolving, the canonical diff is what tells you whether anything was lost;
+re-sorting is expected, removed lines are not:
+
+```sh
+python3 scripts/check.py App.xcodeproj --list
+xcrun xcprojformatter --update App.xcodeproj
+xcrun xcodeproj pkg list && xcrun xcodeproj target list   # both branches' work present?
+```
+
+The alternative is to skip the manual merge entirely: take one side of the file
+whole, then replay the other branch's changes with `xcodeproj` commands. Changes
+that merged cleanly need replaying too, since they are part of the side you
+discarded.
