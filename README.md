@@ -49,11 +49,12 @@ macOS notifications for `xcodebuild` commands, mimicking Xcode's build notificat
 
 ### [xcproj](skills/xcproj)
 
-Read, edit, and validate Xcode projects in the JSON project format (`project.xcproj`, Xcode 27.2+).
+Create, read, edit, and validate Xcode projects from the command line with `xcodeproj` and `xcprojformatter` (Xcode 27.2+), in both project formats.
 
-- Format reference based on Apple's `xcode-project-format` implementation
-- Verified recipes: new targets, framework embedding, test targets, Swift packages, run scripts
-- Catches keys Xcode silently drops via `xcprojformatter`
+- Routes changes through `xcrun xcodeproj` — it generates IDs, validates before writing, and leaves the file canonical
+- Verified recipes: a buildable app from `init`, test targets, Swift packages, xcconfig files, framework embedding
+- Gotchas that fail quietly: synchronized-group exclusions, a framework with no `CFBundleIdentifier`, format conversion
+- Catches keys Xcode silently drops via `xcprojformatter`, and covers hand edits and merge conflicts
 
 ### [sdlc](skills/sdlc)
 

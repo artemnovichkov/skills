@@ -1,0 +1,97 @@
+{
+  "skill_name": "xcproj",
+  "evals": [
+    {
+      "id": 0,
+      "name": "create-ios-app-from-scratch",
+      "prompt": "I don't want to open Xcode for this. In this folder, make me a new iOS app project called Recipes \u2014 SwiftUI entry point, bundle id com.example.recipes, iOS 18 and up, Swift 6. It has to actually build for the simulator, verify that it does.",
+      "expected_output": "A Recipes.xcodeproj that builds. Target with sources+frameworks phases, synchronized source folder, SDKROOT/deployment target/SWIFT_VERSION/bundle id set.",
+      "files": [],
+      "assertions": [
+        "Project created in the JSON format (Recipes.xcodeproj/project.xcproj exists, no project.pbxproj)",
+        "Application target 'Recipes' has both a sources and a frameworks build phase",
+        "SWIFT_VERSION, SDKROOT and IPHONEOS_DEPLOYMENT_TARGET=18.0 are set",
+        "PRODUCT_BUNDLE_IDENTIFIER is com.example.recipes on the target",
+        "Project file is in canonical form (xcprojformatter diff is empty)",
+        "App builds for the iOS Simulator when the grader re-runs xcodebuild",
+        "Report pastes a real build result line rather than claiming success abstractly",
+        "Structural change made with the xcodeproj CLI (init + target add), not by writing the project file"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "package-and-embedded-framework",
+      "prompt": "Add swift-collections to this project (up to next major from 1.2.0) and link DequeModule into the Notes app. Also pull the model code out into a Core framework target that the app links and embeds \u2014 put a placeholder type in it for now. Make sure the app still builds and that the framework actually ends up inside the .app.",
+      "expected_output": "Package added with up-to-next-major 1.2.0, DequeModule linked; Core framework target with phases, linked + embedded via a copy phase, DYLIB_INSTALL_NAME_BASE=@rpath and PRODUCT_BUNDLE_IDENTIFIER set; app builds and Core.framework is inside the built .app.",
+      "files": [
+        "fixtures/clean"
+      ],
+      "assertions": [
+        "swift-collections is added with an up-to-next-major-from-1.2.0 requirement",
+        "DequeModule is linked into the Notes target",
+        "A 'Core' framework target exists with a sources phase and its own source file",
+        "Core has PRODUCT_BUNDLE_IDENTIFIER set (otherwise the embed step fails)",
+        "Core has DYLIB_INSTALL_NAME_BASE=@rpath (otherwise the app crashes at launch)",
+        "Core.framework is both linked (frameworks phase) and embedded (copy phase, frameworks destination)",
+        "App builds when the grader re-runs xcodebuild",
+        "Core.framework is present inside the built .app bundle",
+        "Project file is in canonical form",
+        "Structural change made with the xcodeproj CLI (pkg add + target add), not by writing the project file"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "unit-test-target",
+      "prompt": "This project has no tests. Add a unit test target for the Notes app that can @testable import Notes, with one trivial test in it, and show me the tests actually running.",
+      "expected_output": "unit-test-bundle target, sources phase, synchronized test folder, dependency on the app, TEST_HOST + BUNDLE_LOADER + ENABLE_TESTABILITY; tests run and pass.",
+      "files": [
+        "fixtures/clean"
+      ],
+      "assertions": [
+        "A unit-test-bundle target exists with a sources phase and a test source file",
+        "The test target depends on the Notes app target",
+        "TEST_HOST and BUNDLE_LOADER are set on the test target",
+        "ENABLE_TESTABILITY=YES is set for Debug",
+        "Tests actually execute and pass when the grader re-runs xcodebuild test",
+        "Report pastes a real test result line",
+        "Project file is in canonical form",
+        "Structural change made with the xcodeproj CLI (target add), not by writing the project file"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "diagnose-dropped-setting",
+      "prompt": "I edited project.xcproj by hand to turn on strict concurrency for the Notes target (SWIFT_STRICT_CONCURRENCY = complete) and it's just not taking effect \u2014 the build doesn't complain about anything. Figure out what's wrong and fix it properly.",
+      "expected_output": "Identifies that the key sits on the target object instead of inside build-settings and is therefore silently ignored; removes it from the wrong place and sets it correctly (ideally via the CLI); verifies with a canonical diff or -showBuildSettings.",
+      "files": [
+        "fixtures/broken"
+      ],
+      "assertions": [
+        "Diagnosis names the real cause: the key sat outside build-settings, where Xcode silently ignores it",
+        "The stray key is gone from the target object",
+        "SWIFT_STRICT_CONCURRENCY=complete is now readable via `xcodeproj setting get` on the Notes target",
+        "xcodebuild -showBuildSettings now reports SWIFT_STRICT_CONCURRENCY=complete",
+        "No pre-existing settings were lost (PRODUCT_BUNDLE_IDENTIFIER still present)",
+        "Project file is in canonical form and check.py reports no dropped keys",
+        "Structural change made with the xcodeproj CLI (setting set), not by writing the project file"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "legacy-pbxproj-per-config",
+      "prompt": "This is an older-format project (project.pbxproj) and I want to keep it that way \u2014 don't convert it. Set SWIFT_OPTIMIZATION_LEVEL to -Onone for Debug only on the Notes target, and keep the diff as small as possible.",
+      "expected_output": "Uses xcrun xcodeproj setting set --config Debug with a bare -- before -Onone; project stays in pbxproj format; small diff; verified by reading the setting back.",
+      "files": [
+        "fixtures/legacy"
+      ],
+      "assertions": [
+        "Project is still in the legacy format (project.pbxproj present, no project.xcproj)",
+        "SWIFT_OPTIMIZATION_LEVEL is -Onone on the Notes target in Debug",
+        "Release is left unset for SWIFT_OPTIMIZATION_LEVEL on that target",
+        "The resulting diff is small (at most 8 changed lines)",
+        "xcodebuild -list still loads the project",
+        "Structural change made with the xcodeproj CLI (setting set), not by writing the project file"
+      ]
+    }
+  ]
+}

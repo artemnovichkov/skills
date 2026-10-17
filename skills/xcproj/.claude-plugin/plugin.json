@@ -1,12 +1,20 @@
 {
   "name": "xcproj",
-  "description": "Read, edit, and validate Xcode projects in the JSON project format (project.xcproj, Xcode 27.2+)",
-  "version": "1.2.0",
+  "description": "Create, read, edit and validate Xcode projects from the command line with xcodeproj and xcprojformatter (Xcode 27.2+), in both project formats",
+  "version": "2.0.0",
   "author": {
     "name": "Artem Novichkov",
     "email": "mail@artemnovichkov.com",
     "url": "https://artemnovichkov.com"
   },
-  "keywords": ["xcode", "xcproj", "xcodeproj", "project", "ios", "macos", "apple"],
+  "keywords": [
+    "xcode",
+    "xcproj",
+    "xcodeproj",
+    "project",
+    "ios",
+    "macos",
+    "apple"
+  ],
   "license": "MIT"
 }
