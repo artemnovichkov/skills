@@ -8,8 +8,7 @@
   "metadata": {
     "description": "A marketplace of skills for AI coding agents",
     "version": "1.2.0",
-    "homepage": "https://github.com/artemnovichkov/skills",
-    "pluginRoot": "./skills"
+    "homepage": "https://github.com/artemnovichkov/skills"
   },
   "plugins": [
     {
